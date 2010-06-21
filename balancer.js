@@ -11,20 +11,20 @@ Proxy.Balancer = function(nodes, strategy){
     strategy.addNode(node); 
   });
   
-  var newClient = function(node, socket){
+  var newClient = function(node){
     host = node.split(':')[0];
     port = node.split(':')[1];
-    return new Proxy.Client(node, socket, port, host);
+    return new Proxy.Client(node, port, host);
   };
   
   var server = new Proxy.Server(function(){
     log('Initialized');
-    var server = this;
+    var server = this, node;
     server.addListener('data', function(data){
-      node = strategy.selectNode();
       log('Routing Request ' + node);
-      newClient(node, server.socket).write(data);
+      node.write(data, server.getSocket());
     });
+    server.addListener('end', function(){ node.end(); });
   });
   
   this.run = function(port, host){

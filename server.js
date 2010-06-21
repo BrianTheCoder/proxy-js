@@ -12,7 +12,7 @@ Proxy.Server = function(initializer){
     
   self.server = net.createServer(function(stream){
     log('Started');
-    self.socket = stream;
+    self.getSocket = function(){ return stream; };
     stream.setEncoding('utf8');
     stream.addListener('connect', function(){ 
       log('connected initializng');
@@ -22,8 +22,9 @@ Proxy.Server = function(initializer){
       emitter.emit('data', data); 
     });
     stream.addListener('end', function(){
-      proxies.forEach(function(proxy){ proxy.end(); });
+      log('ending connection');
       stream.end();
+      emitter.emit('end');
     });
   });
   

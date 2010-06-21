@@ -1,5 +1,5 @@
 Proxy = Proxy || {};
-Proxy.Client = function(name, socket, port, host){
+Proxy.Client = function(name, port, host){
   var self = this, buffer = [];
   
   var proxy = net.createConnection(port, host);
@@ -15,18 +15,20 @@ Proxy.Client = function(name, socket, port, host){
   });
   proxy.addListener('data', function(data){
     log('received data forwarding to server');
-    log(sys.inspect(socket));
     log(socket.readyState);
     socket.write(data);
   });
-  proxy.addListener('end', function(){ proxy.end(); });
+  
+  proxy.addListener('end', function(){ 
+    log('ending proxy');
+    proxy.end(); 
+  });
   
   this.toString = function(){ return host + ':' + port; };
       
-  this.write = function(data){
+  this.write = function(data, stream){
+    socket = stream;
     log('write('+ proxy.readyState +') ' + sys.inspect(data));
-    log(sys.inspect(proxy));
-    log(sys.inspect(socket));
     if(proxy.readyState == 'open') proxy.write(data);
     buffer.push(data);
   };
