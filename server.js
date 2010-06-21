@@ -32,7 +32,7 @@ Proxy.Server = function(initializer){
   };
   
   this.connect = function(port, host){
-    proxies.push(new ProxyClient(proxy_count, socket, port, host));
+    proxies.push(new Proxy.Client(proxy_count, self.socket, port, host));
     proxy_count++;
   };
   
