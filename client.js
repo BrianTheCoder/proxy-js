@@ -16,6 +16,7 @@ Proxy.Client = function(name, socket, port, host){
   proxy.addListener('data', function(data){
     log('received data forwarding to server');
     log(sys.inspect(socket));
+    log(socket.readyState);
     socket.write(data);
   });
   proxy.addListener('end', function(){ proxy.end(); });
