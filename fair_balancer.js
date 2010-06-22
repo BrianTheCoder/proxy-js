@@ -9,6 +9,7 @@ var Fair = function(nodes, mode){
   var server = net.createServer(function(stream){
     var log = function(str){ sys.log('(server)[' + Date.now() + '] ' + str); };
     
+    // encapsulating the client functionality
     var Client = function(node){
       var buffer = [];
       var args = node.split(':');
@@ -17,6 +18,7 @@ var Fair = function(nodes, mode){
       var log = function(str){ sys.log('(client-' + node + ')[' + Date.now() + '] ' + str); };
 
       client.addListener('connect', function(){
+        // if some thing tried to write to the client before it was ready, replay that now
         if(buffer.length > 0) buffer.forEach(function(datum){ client.write(datum); });
       });
 
@@ -24,14 +26,18 @@ var Fair = function(nodes, mode){
       
       client.addListener('data', function(data){
         stream.write(data);
+        // finish the request if http mode, otherwise the connection will continue
         if(mode == 'http') stream.end();
+        // mark the node as available for work by pushing it back onto the stack
         if(queue.length == 0) nodes.push(node);
+        // if a request was queued, set the node to start processing that
         else client.write(queue.shift());
       });
 
       var oldWrite = client.write;
 
       this.write = function(data){
+        // this prevents the client being written to until a connection is established
         if(client.readyState == 'open'){
           client.write = oldWrite;
           client.write(data);
@@ -39,17 +45,18 @@ var Fair = function(nodes, mode){
         buffer.push(data);
       };
     };
-  
-    stream.setEncoding('utf8');
+
     stream.addListener('connect', function(){
       log('connected');
     });
     stream.addListener('data', function(data){
+      // pulls the first node of the stack if there is one and connects to that
       address = nodes.shift();
       log('routing to '+ address);
       if(address){
         var node = new Client(address);
         node.write(data);
+      // if there's no node available, push the request on to a queue
       }else queue.push(data);
     });
     stream.addListener('end', stream.end);
