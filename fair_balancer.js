@@ -16,14 +16,14 @@ var Fair = function(nodes, mode){
       var client = net.createConnection(args[1], args[0]);
 
       var log = function(str){ sys.log('(client-' + node + ')[' + Date.now() + '] ' + str); };
-
+      
+      client.setEncoding('binary');
+      client.setKeepAlive(true);
+      client.setNoDelay(true);
       client.addListener('connect', function(){
         // if some thing tried to write to the client before it was ready, replay that now
         if(buffer.length > 0) buffer.forEach(function(datum){ client.write(datum); });
-      });
-      
-      client.addListener('end', client.end);
-      
+      });   
       client.addListener('data', function(data){
         process.nextTick(function(){
           stream.write(data);
@@ -35,6 +35,16 @@ var Fair = function(nodes, mode){
         // if a request was queued, set the node to start processing that
         else process.nextTick(function(){ client.write(queue.shift());});
       });
+      client.addListener('drain', function(){ log('drain'); });
+      client.addListener('error', function(){ log('error'); });
+      
+      var resetClientNode = function(){
+        client.end();
+        delete client;
+      };
+      
+      client.addListener('timeout', resetClientNode);
+      client.addListener('end', resetClientNode);
 
       var oldWrite = client.write;
 
@@ -42,8 +52,7 @@ var Fair = function(nodes, mode){
         // this prevents the client being written to until a connection is established
         if(client.readyState == 'open'){
           process.nextTick(function(){
-            client.write = oldWrite;
-            client.write(data);
+            (client.write = oldWrite)(data);
           });
         }
         buffer.push(data);
@@ -52,7 +61,10 @@ var Fair = function(nodes, mode){
     
     stream.setEncoding('binary');
     stream.setKeepAlive(true);
-    stream.addListener('connect', function(){ stream.setNoDelay(); });
+    stream.setNoDelay(true);
+    stream.addListener('connect', function(){ log('connect'); });
+    stream.addListener('drain', function(){ log('drain'); });
+    stream.addListener('error', function(){ log('error'); });
     stream.addListener('data', function(data){
       // pulls the first node of the stack if there is one and connects to that
       address = nodes.shift();
