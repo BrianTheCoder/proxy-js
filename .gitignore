@@ -1,0 +1,4 @@
+*.conf
+*.rdb
+log/*
+tmp/*
